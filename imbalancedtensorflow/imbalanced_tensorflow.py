@@ -190,12 +190,21 @@ class ImbalancedTensorflow:
         plt.title('Confusion matrix @{:.2f}'.format(p))
         plt.ylabel('Actual label')
         plt.xlabel('Predicted label')
+        true_negative = cm[0][0]
+        false_positive = cm[0][0]
+        false_negative = cm[0][1]
+        true_positive = cm[1][1]
 
-        print('True Negatives: ', cm[0][0])
-        print('False Positives: ', cm[0][1])
-        print('False Negatives: ', cm[1][0])
-        print('True Positives: ', cm[1][1])
+        print('True Negatives: ', true_negative)
+        print('False Positives: ', false_positive)
+        print('False Negatives: ', false_negative)
+        print('True Positives: ', true_positive)
         print('Total Positive cases: ', np.sum(cm[1]))
+        print('Total Negative cases: ', np.sum(cm[0]))
+        print('Sensitivity (True Positive Rate): ', true_positive/(true_positive+false_negative))
+        print('Specificity (True Negative Rate): ', true_negative/(true_negative+false_positive))
+        print('Precision (Percentage of Positive values detected accurately): ', true_positive/(true_positive+false_positive))
+        print('Negative Predictive Value (percentage of negative values detected accurately): ', true_negative/(true_negative+false_negative))
 
     def plotter(self, model, test_features, test_labels, test_predictions_baseline):
         baseline_results = model.evaluate(test_features, test_labels,
