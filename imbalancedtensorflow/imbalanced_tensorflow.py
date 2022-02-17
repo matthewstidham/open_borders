@@ -21,7 +21,7 @@ mpl.rcParams['figure.figsize'] = (12, 10)
 colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
 
 
-class ImbalancedTensorflow():
+class ImbalancedTensorflow:
     def __init__(self):
         self.baseline_history = None
         self.EPOCHS = 100
@@ -37,7 +37,8 @@ class ImbalancedTensorflow():
             keras.metrics.AUC(name='auc'),
         ]
 
-    def plot_loss(self, history, label, n):
+    @staticmethod
+    def plot_loss(history, label, n):
         # Use a log scale to show the wide range of values.
         plt.semilogy(history.epoch, history.history['loss'],
                      color=colors[n], label='Train ' + label)
@@ -49,7 +50,8 @@ class ImbalancedTensorflow():
 
         plt.legend()
 
-    def plot_metrics(self, history):
+    @staticmethod
+    def plot_metrics(history):
         metrics = ['loss', 'auc', 'precision', 'recall']
         for n, metric in enumerate(metrics):
             name = metric.replace("_", " ").capitalize()
@@ -68,7 +70,7 @@ class ImbalancedTensorflow():
 
             plt.legend()
 
-    def make_model(self, metrics=self.METRICS, output_bias=None, train_features=None):
+    def make_model(self, output_bias=None, train_features=None):
         if output_bias is not None:
             output_bias = tf.keras.initializers.Constant(output_bias)
         model = keras.Sequential([
@@ -83,7 +85,7 @@ class ImbalancedTensorflow():
         model.compile(
             optimizer=keras.optimizers.Adam(lr=1e-3),
             loss=keras.losses.BinaryCrossentropy(),
-            metrics=metrics)
+            metrics=self.METRICS)
 
         return model
 
@@ -92,7 +94,6 @@ class ImbalancedTensorflow():
         # Form np arrays of labels and features.
         train_labels = np.array(train_df['Status'])
         train_df = train_df.drop('Status', 1)
-        bool_train_labels = train_labels != 0
         val_labels = np.array(val_df['Status'])
         val_df = val_df.drop('Status', 1)
         test_labels = np.array(test_df['Status'])
@@ -118,16 +119,16 @@ class ImbalancedTensorflow():
             mode='max',
             restore_best_weights=True)
         model = self.make_model(train_features=train_features)
-        results = model.evaluate(train_features, train_labels, batch_size=self.BATCH_SIZE, verbose=0)
+        model.evaluate(train_features, train_labels, batch_size=self.BATCH_SIZE, verbose=0)
         initial_bias = np.log([pos / neg])
         model = self.make_model(output_bias=initial_bias, train_features=train_features)
-        results = model.evaluate(train_features, train_labels, batch_size=self.BATCH_SIZE, verbose=0)
+        model.evaluate(train_features, train_labels, batch_size=self.BATCH_SIZE, verbose=0)
         initial_weights = os.path.join(tempfile.mkdtemp(), 'initial_weights')
         model.save_weights(initial_weights)
         model = self.make_model(train_features=train_features)
         model.load_weights(initial_weights)
         model.layers[-1].bias.assign([0.0])
-        zero_bias_history = model.fit(
+        model.fit(  # zero_bias_history
             train_features,
             train_labels,
             batch_size=self.BATCH_SIZE,
@@ -136,7 +137,7 @@ class ImbalancedTensorflow():
             verbose=0)
         model = self.make_model(train_features=train_features)
         model.load_weights(initial_weights)
-        careful_bias_history = model.fit(
+        model.fit(  # careful_bias_history
             train_features,
             train_labels,
             batch_size=self.BATCH_SIZE,
@@ -145,14 +146,14 @@ class ImbalancedTensorflow():
             verbose=0)
         model = self.make_model(train_features=train_features)
         model.load_weights(initial_weights)
-        baseline_history = model.fit(
+        model.fit(  # baseline_history
             train_features,
             train_labels,
             batch_size=self.BATCH_SIZE,
             epochs=self.EPOCHS,
             callbacks=[early_stopping],
             validation_data=(val_features, val_labels))
-        train_predictions_baseline = model.predict(train_features, batch_size=self.BATCH_SIZE)
+        model.predict(train_features, batch_size=self.BATCH_SIZE)  # train_predictions_baseline
         test_predictions_baseline = model.predict(test_features, batch_size=self.BATCH_SIZE)
         d = dict()
         d['testfeatures'] = test_features
@@ -162,7 +163,7 @@ class ImbalancedTensorflow():
         d['model'] = model
         return d
 
-    def neuralnetwork(self, df):
+    def neuralnetwork(self, df=None):
         eps = 0.001
         for x in ['GDP_x', 'GDP_y', 'Population_x', 'Population_y', 'GDP', 'Population', 'Average Population',
                   'GDP per capita', 'worse GDP per capita', 'better GDP per capita', 'GDP per capita_x',
@@ -170,7 +171,6 @@ class ImbalancedTensorflow():
             df[x] = np.log(df.pop(x) + eps)
         raw_df = df._get_numeric_data()
         neg, pos = np.bincount(raw_df['Status'])
-        total = neg + pos
         cleaned_df = raw_df.copy()
         # Use a utility from sklearn to split and shuffle our dataset.
         shuffled = raw_df.sample(frac=1)
@@ -182,7 +182,8 @@ class ImbalancedTensorflow():
         run5 = self.tensor(pd.concat([result[x] for x in [0, 1, 2, 3]]), result[4], neg, pos)
         return [run1, run2, run3, run4, run5, result, df]
 
-    def plot_cm(self, labels, predictions, p=0.5):
+    @staticmethod
+    def plot_cm(labels, predictions, p=0.5):
         cm = confusion_matrix(labels, predictions > p)
         plt.figure(figsize=(5, 5))
         sns.heatmap(cm, annot=True, fmt="d")
