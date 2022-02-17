@@ -25,11 +25,11 @@ class MakePredictions:
 
         n = self.imbalanced.neuralnetwork(df=test)
 
-        for x in [0, 1, 2, 3, 4]:
+        for x in range(0, 5):
             self.imbalanced.plotter(n[x]['model'], n[x]['testfeatures'], n[x]['test_labels'], n[x]['test_predictions'])
 
         main_dataframe = []
-        for x in [0, 1, 2, 3, 4]:
+        for x in range(0, 5):
             results = n[5][x]
             results['True'] = n[x]['test_labels']
             results['Predicted'] = n[x]['test_predictions']
